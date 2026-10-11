@@ -1,0 +1,59 @@
+{
+  "request_id": "REQ-1001",
+  "recommendation": "Route the add-on for Manager approval after confirming the existing SignFlow scope and seat capacity; the catalog match does not establish that the add-on is redundant.",
+  "recommendation_code": "proceed_to_required_approvals",
+  "evidence": [
+    {
+      "source": "data/requests.json",
+      "finding": "REQ-1001 requests a SignFlow Add-on at $800 for 3 users with internal_documents access and a business purpose of three additional signing identities.",
+      "reference": "data/requests.json#REQ-1001",
+      "evidence_status": "verified"
+    },
+    {
+      "source": "data/software_catalog.csv",
+      "finding": "The approved catalog contains SignFlow (SW010), E-signature, Company-wide, with 45 licensed seats; this is an existing-product match, not proof of unused capacity or functional duplication.",
+      "reference": "data/software_catalog.csv#SW010",
+      "evidence_status": "verified"
+    },
+    {
+      "source": "data/purchase_history.csv",
+      "finding": "Finance has an approved company-wide SignFlow purchase in PO-2513.",
+      "reference": "data/purchase_history.csv#PO-2513",
+      "evidence_status": "verified"
+    },
+    {
+      "source": "data/department_budgets.csv",
+      "finding": "Finance has $29,000 available budget ($90,000 annual budget minus $61,000 committed).",
+      "reference": "data/department_budgets.csv#Finance",
+      "evidence_status": "verified"
+    },
+    {
+      "source": "data/vendors.csv",
+      "finding": "SignFlow is an approved vendor with a current security review dated 2026-06-20.",
+      "reference": "data/vendors.csv#V010",
+      "evidence_status": "verified"
+    },
+    {
+      "source": "mock_api",
+      "finding": "The vendor-risk record reports an approved review dated 2026-06-20 and stores_data_outside_region=false.",
+      "reference": "GET /vendor-risk/SignFlow",
+      "evidence_status": "verified"
+    },
+    {
+      "source": "data/procurement_policy.md",
+      "finding": "Annual spend of $800 falls in the 'Up to $1,000' tier, requiring Manager approval only.",
+      "reference": "data/procurement_policy.md#section-4",
+      "evidence_status": "verified"
+    }
+  ],
+  "required_approvals": [
+    "Manager"
+  ],
+  "missing_information": [],
+  "risk_flags": [
+    "existing_tool_overlap"
+  ],
+  "next_step": "Confirm the existing SignFlow scope and available seat capacity, then route the add-on for Manager approval; do not treat the catalog match as a confirmed duplicate.",
+  "human_review_required": true,
+  "telemetry": null
+}
