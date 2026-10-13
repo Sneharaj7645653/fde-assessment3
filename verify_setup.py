@@ -99,9 +99,20 @@ def check_contract_and_evals() -> None:
 
     sample = ProcurementDecision(
         request_id="REQ-CHECK",
-        recommendation="Manual review",
-        evidence=[EvidenceItem(source="setup", finding="Contract validation works")],
-        next_step="Continue implementation",
+        recommendation="Route for manual review because the vendor-risk evidence is unavailable or materially incomplete.",
+        recommendation_code="route_for_manual_review",
+        evidence=[
+            EvidenceItem(
+                source="setup",
+                finding="Contract validation works",
+                reference="setup:contract-check",
+            )
+        ],
+        required_approvals=["Department Head", "Finance", "Procurement", "Security", "Legal"],
+        missing_information=[],
+        risk_flags=["vendor_risk_unavailable"],
+        next_step="Continue implementation with a human review checkpoint.",
+        human_review_required=True,
     )
     if sample.request_id != "REQ-CHECK":
         fail("ProcurementDecision contract validation failed")

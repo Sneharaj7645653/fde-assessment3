@@ -913,6 +913,20 @@ The UI must:
 - show the role of human reviewers in approval and exceptions
 - render structured JSON or equivalent readable decision output
 
+### 9.4 Assessment requirements and current implementation scope
+The assessment requirements remain those defined in Sections 1, 7, and 14: the product UI presents request details, evidence, recommendation, required approvals, risks, missing information, and the human next action. The overall assessment also requires Architecture A and Architecture B; this UI task implements only the existing Architecture A path and does not change or waive the separate Architecture B requirement.
+
+For this implementation slice, the UI acceptance criteria are:
+
+- Select a supplied request from `data/requests.json` and invoke `handle_request(request_id, architecture="single")`. Freeform request entry is not required for this flow.
+- Display request details and the returned recommendation/code, required approvals, risk flags, missing-information fields, next step, and human-review requirement as readable sections rather than an opaque serialized object.
+- Display each evidence item's source, reference, finding, and status. Render `verified`, `missing`, `expired`, `unknown`, `unavailable`, and `conflicting` distinctly; treat an absent status as `unknown`.
+- If backend execution or output validation raises an error, show an error state and no recommendation from that failed run. Preserve backend uncertainty as evidence/status rather than replacing it with a favorable UI interpretation.
+- Do not present optional telemetry as observed call metrics unless it is backed by runtime instrumentation. The current deterministic adapter's fixed telemetry values are not UI metrics.
+- Keep the assessment's human-approval warning visible; rendering a recommendation must never imply that a purchase or approval occurred.
+
+These are UI implementation acceptance checks, not additional procurement policy rules. The policy engine remains the sole owner of decision logic; the UI only selects a supported input, invokes the adapter, validates/renders its result, and communicates errors.
+
 ---
 
 ## Section 10: Evaluation plan

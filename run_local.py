@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 import signal
+import socket
 import subprocess
 import sys
 import time
@@ -13,8 +15,20 @@ ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env", override=False)
 
 
+API_PORT = int(os.getenv("API_PORT", "8001"))
+UI_PORT = int(os.getenv("UI_PORT", "8501"))
+
+
 def start(cmd: list[str]) -> subprocess.Popen:
-    return subprocess.Popen(cmd, cwd=ROOT)
+    # The UI process must call the same mock API port this script starts.
+    env = {**os.environ, "VENDOR_RISK_BASE_URL": f"http://127.0.0.1:{API_PORT}"}
+    return subprocess.Popen(cmd, cwd=ROOT, env=env)
+
+
+def port_in_use(port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(0.3)
+        return sock.connect_ex(("127.0.0.1", port)) == 0
 
 
 def wait_for_api(url: str, proc: subprocess.Popen, timeout_seconds: float = 10.0) -> None:
@@ -44,8 +58,11 @@ def _handle_termination(signum: int, frame: object) -> None:
 def main() -> None:
     signal.signal(signal.SIGTERM, _handle_termination)
     procs: list[subprocess.Popen] = []
+    busy = [p for p in (API_PORT, UI_PORT) if port_in_use(p)]
+    if busy:
+        raise SystemExit(f"Port(s) {busy} already in use. Stop the other process or choose ports, e.g. API_PORT=8011 UI_PORT=8511 python run_local.py")
     try:
-        print("Starting vendor-risk API on http://127.0.0.1:8001 ...")
+        print(f"Starting vendor-risk API on http://127.0.0.1:{API_PORT} ...")
         api_proc = start(
             [
                 sys.executable,
@@ -55,11 +72,11 @@ def main() -> None:
                 "--host",
                 "127.0.0.1",
                 "--port",
-                "8001",
+                str(API_PORT),
             ]
         )
         procs.append(api_proc)
-        wait_for_api("http://127.0.0.1:8001/health", api_proc)
+        wait_for_api(f"http://127.0.0.1:{API_PORT}/health", api_proc)
         print("Vendor-risk API is ready.")
 
         try:
@@ -68,7 +85,7 @@ def main() -> None:
             print("Streamlit is not installed. Run: pip install -r requirements.txt")
             print("The mock API is still running. Press Ctrl+C to stop.")
         else:
-            print("Starting starter UI on http://127.0.0.1:8501 ...")
+            print(f"Starting UI on http://127.0.0.1:{UI_PORT} ...")
             procs.append(
                 start(
                     [
@@ -78,7 +95,9 @@ def main() -> None:
                         "run",
                         "app.py",
                         "--server.port",
-                        "8501",
+                        str(UI_PORT),
+                        "--server.headless",
+                        "true",
                     ]
                 )
             )

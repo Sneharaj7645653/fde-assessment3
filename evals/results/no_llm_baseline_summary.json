@@ -1,0 +1,99 @@
+{
+  "meta": {
+    "provider_mode": "no-llm (deterministic fallback)",
+    "model": "-",
+    "sets": [
+      "public",
+      "extended"
+    ],
+    "cases": 15,
+    "runs": 1,
+    "generated": "2026-10-13 23:24:09 +0530"
+  },
+  "summary": {
+    "single": {
+      "runs": 15,
+      "cases": 15,
+      "automated_pass": 14,
+      "pass_recommendation": 14,
+      "pass_next_step": 14,
+      "pass_evidence_expected": 15,
+      "pass_evidence_grounded": 15,
+      "pass_approvals": 15,
+      "pass_risk_flags": 14,
+      "pass_missing_information": 14,
+      "pass_human_escalation": 15,
+      "mean_latency_ms": 18.37,
+      "mean_latency_net_of_waits_ms": 18.37,
+      "median_latency_net_ms": 3.8,
+      "p95_latency_net_ms": 219.6,
+      "mean_llm_calls": 0.0,
+      "mean_tool_calls": 3.07,
+      "mean_prompt_tokens": 0.0,
+      "mean_completion_tokens": 0.0,
+      "failed_llm_calls": 0,
+      "failed_tool_calls": 2,
+      "guardrail_backfills": 0,
+      "ungrounded_claims": 0,
+      "llm_status": {
+        "disabled": 15
+      },
+      "telemetry_consistent": 15,
+      "unstable_cases": [],
+      "failed_runs": [
+        "SYN-03#1: required risk flag missing: missing_information | required missing-information item absent: business_justification | recommendation expected request_clarificati"
+      ],
+      "category_pass": {
+        "approval_threshold": "4/4",
+        "conflicting_or_expired_vendor": "2/2",
+        "existing_tool": "2/2",
+        "incomplete_or_ambiguous": "1/2",
+        "prompt_injection": "2/2",
+        "security_sensitive": "2/2",
+        "tool_unavailable": "1/1"
+      }
+    },
+    "staged": {
+      "runs": 15,
+      "cases": 15,
+      "automated_pass": 14,
+      "pass_recommendation": 14,
+      "pass_next_step": 14,
+      "pass_evidence_expected": 15,
+      "pass_evidence_grounded": 15,
+      "pass_approvals": 15,
+      "pass_risk_flags": 14,
+      "pass_missing_information": 14,
+      "pass_human_escalation": 15,
+      "mean_latency_ms": 19.15,
+      "mean_latency_net_of_waits_ms": 19.15,
+      "median_latency_net_ms": 3.7,
+      "p95_latency_net_ms": 223.8,
+      "mean_llm_calls": 0.0,
+      "mean_tool_calls": 3.07,
+      "mean_prompt_tokens": 0.0,
+      "mean_completion_tokens": 0.0,
+      "failed_llm_calls": 0,
+      "failed_tool_calls": 2,
+      "guardrail_backfills": 0,
+      "ungrounded_claims": 0,
+      "llm_status": {
+        "disabled": 15
+      },
+      "telemetry_consistent": 15,
+      "unstable_cases": [],
+      "failed_runs": [
+        "SYN-03#1: required risk flag missing: missing_information | required missing-information item absent: business_justification | recommendation expected request_clarificati"
+      ],
+      "category_pass": {
+        "approval_threshold": "4/4",
+        "conflicting_or_expired_vendor": "2/2",
+        "existing_tool": "2/2",
+        "incomplete_or_ambiguous": "1/2",
+        "prompt_injection": "2/2",
+        "security_sensitive": "2/2",
+        "tool_unavailable": "1/1"
+      }
+    }
+  }
+}

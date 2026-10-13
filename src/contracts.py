@@ -44,6 +44,7 @@ class EvidenceItem(BaseModel):
     finding: str = Field(description="Concise factual finding")
     reference: str = Field(description="Exact record ID, policy section, or endpoint")
     evidence_status: Literal["verified", "missing", "expired", "unknown", "unavailable", "conflicting"] | None = None
+    tool: str | None = Field(default=None, description="Tool whose result this item was built from (solution addition)")
 
     @field_validator("source", "finding")
     @classmethod
@@ -65,6 +66,15 @@ class RunTelemetry(BaseModel):
     timeouts: int = Field(ge=0, description="Timed-out attempts; included in failed call counts")
     tool_errors: int = Field(ge=0, description="Non-timeout failed tool attempts")
     tool_names: list[str] = Field(description="Unique tool identifiers observed during the run")
+    # Solution additions: all values are measured by src.instrumentation.RunRecorder.
+    llm_latency_ms: float = Field(default=0.0, ge=0, description="Time spent inside provider calls, excluding rate-limit waits")
+    tool_latency_ms: float = Field(default=0.0, ge=0)
+    rate_limit_wait_ms: float = Field(default=0.0, ge=0, description="Time deliberately waited for provider rate limits")
+    prompt_tokens: int = Field(default=0, ge=0)
+    completion_tokens: int = Field(default=0, ge=0)
+    guardrail_tool_backfills: int = Field(default=0, ge=0, description="Mandatory tool calls the code had to run because the agent did not")
+    rejected_tool_calls: int = Field(default=0, ge=0, description="Dispatches refused before execution (bad arguments, unknown tool, wrong request_id); included in tool_calls and failed_tool_calls")
+    tool_call_counts: dict[str, int] = Field(default_factory=dict, description="Executed attempts per tool (rejected dispatches excluded)")
 
     @field_validator("tool_names")
     @classmethod
@@ -87,6 +97,48 @@ class RunTelemetry(BaseModel):
         if self.tool_errors > self.failed_tool_calls:
             raise ValueError("Tool errors cannot exceed failed tool attempts")
         return self
+
+
+class HumanHandoff(BaseModel):
+    """Who must act next. The copilot never approves, purchases, or grants exceptions itself."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    required: bool
+    reasons: list[str]
+    escalate_to: list[str]
+    authority_note: str
+
+
+class AIAssessment(BaseModel):
+    """Validated, grounded interpretation produced by the model (never policy)."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    justification_adequate: bool | None = None
+    justification_note: str | None = None
+    injection_suspected: bool = False
+    injection_quote: str | None = None
+    overlap_view: Literal["yes", "partial", "no", "unclear"] | None = None
+    overlap_note: str | None = None
+    overlap_refs: list[str] = Field(default_factory=list)
+    clarifying_questions: list[str] = Field(default_factory=list)
+
+
+class RunMetadata(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    architecture: Literal["single", "staged"]
+    agents: list[str] = Field(description="Agents/stages that executed, in order")
+    llm_status: Literal["live", "mock", "fallback", "disabled"] = Field(
+        description="live = real provider answered; mock = scripted test provider; "
+        "fallback = provider failed and deterministic policy output was used; disabled = no provider configured"
+    )
+    provider: str | None = None
+    model: str | None = None
+    fallback_reason: str | None = None
+    guardrail_notes: list[str] = Field(default_factory=list, description="Places where deterministic code overrode, ignored, or rejected model output")
+    ungrounded_claims: int = Field(default=0, ge=0, description="Model claims (quotes, citations, figures) that did not match tool results and were dropped")
 
 
 class ProcurementDecision(BaseModel):
@@ -128,6 +180,11 @@ class ProcurementDecision(BaseModel):
     next_step: str = Field(description="Specific next action for a human reviewer")
     human_review_required: bool
     telemetry: RunTelemetry | None = None
+    # Solution additions (all optional so the instructor's minimal contract still validates).
+    rationale: str | None = Field(default=None, description="Short explanation for reviewers (model-written when live, template otherwise)")
+    human_handoff: HumanHandoff | None = None
+    ai_assessment: AIAssessment | None = None
+    metadata: RunMetadata | None = None
 
     @field_validator("request_id", "recommendation", "next_step")
     @classmethod
