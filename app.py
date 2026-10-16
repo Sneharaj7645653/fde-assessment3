@@ -25,6 +25,11 @@ ACCESS_LEVELS = ["unknown", "none", "internal_marketing", "internal_documents", 
                  "production_telemetry", "employee_pii", "customer_pii", "credentials"]
 
 
+def esc(value: object) -> str:
+    """Streamlit renders $...$ as LaTeX; escape dollar signs so amounts display literally."""
+    return str(value).replace("$", "\\$")
+
+
 def _ai_banner(decision: ProcurementDecision) -> None:
     meta = decision.metadata
     if meta is None:
@@ -42,7 +47,7 @@ def _ai_banner(decision: ProcurementDecision) -> None:
 
 def _render_decision(decision: ProcurementDecision) -> None:
     st.subheader("Recommendation")
-    st.write(decision.recommendation)
+    st.write(esc(decision.recommendation))
     st.caption(f"Decision code: {decision.recommendation_code}")
     _ai_banner(decision)
 
@@ -54,14 +59,14 @@ def _render_decision(decision: ProcurementDecision) -> None:
     if handoff:
         with st.expander("Human handoff - who must act", expanded=True):
             for reason in handoff.reasons:
-                st.markdown(f"- {reason}")
+                st.markdown(f"- {esc(reason)}")
             if handoff.escalate_to:
                 st.markdown("**Decision owners:** " + ", ".join(handoff.escalate_to))
-            st.caption(handoff.authority_note)
+            st.caption(esc(handoff.authority_note))
 
     if decision.rationale:
         st.markdown("**Why**")
-        st.write(decision.rationale)
+        st.write(esc(decision.rationale))
 
     approvals_column, risks_column = st.columns(2)
     with approvals_column:
@@ -88,12 +93,12 @@ def _render_decision(decision: ProcurementDecision) -> None:
         if decision.ai_assessment and decision.ai_assessment.clarifying_questions:
             st.markdown("**Suggested questions for the requester**")
             for question in decision.ai_assessment.clarifying_questions:
-                st.markdown(f"- {question}")
+                st.markdown(f"- {esc(question)}")
     else:
         st.write("None identified.")
 
     st.subheader("Next step")
-    st.write(decision.next_step)
+    st.write(esc(decision.next_step))
 
     st.subheader("Supporting evidence")
     st.caption("Every item below was produced from a tool result or the policy file; none is model-written.")
@@ -106,16 +111,16 @@ def _render_decision(decision: ProcurementDecision) -> None:
                 st.badge(status.title(), color=color, help=help_text)
             with source_column:
                 st.markdown(f"**{item.source}**")
-                st.caption(f"{item.reference}" + (f" · tool: {item.tool}" if item.tool else ""))
-            st.write(item.finding)
+                st.caption(esc(item.reference) + (f" · tool: {item.tool}" if item.tool else ""))
+            st.write(esc(item.finding))
 
     if decision.ai_assessment and (decision.ai_assessment.overlap_note or decision.ai_assessment.injection_suspected):
         with st.expander("AI interpretation (advisory only)"):
             ai = decision.ai_assessment
             if ai.overlap_note:
-                st.markdown(f"**Existing-tool overlap ({ai.overlap_view}):** {ai.overlap_note}")
+                st.markdown(f"**Existing-tool overlap ({ai.overlap_view}):** {esc(ai.overlap_note)}")
             if ai.injection_suspected:
-                st.markdown(f"**Instruction-like text ignored:** “{ai.injection_quote}”")
+                st.markdown(f"**Instruction-like text ignored:** “{esc(ai.injection_quote)}”")
 
     if decision.metadata and decision.telemetry:
         with st.expander("Run details (measured, not estimated)"):
@@ -126,7 +131,7 @@ def _render_decision(decision: ProcurementDecision) -> None:
                 "Model latency (ms)": [t.llm_latency_ms], "Rate-limit wait (ms)": [t.rate_limit_wait_ms], "Tokens (in/out)": [f"{t.prompt_tokens}/{t.completion_tokens}"],
             })
             for note in m.guardrail_notes:
-                st.markdown(f"- Guardrail: {note}")
+                st.markdown(f"- Guardrail: {esc(note)}")
 
 
 def _custom_request() -> dict:

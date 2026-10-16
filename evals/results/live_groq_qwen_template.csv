@@ -1,0 +1,25 @@
+case_id,architecture,correct_next_action,grounded_evidence,policy_followed,human_escalation_correct,latency_ms,llm_calls,tool_calls,notes
+PUB-01#run1,single,True,True,True,True,1483.0,4,4,
+PUB-01#run1,staged,True,True,True,True,2341.4,3,4,Dropped 1 Stage-1 fact(s) citing unknown references
+PUB-02#run1,single,True,True,True,True,1344.2,3,4,
+PUB-02#run1,staged,True,True,True,True,2688.8,5,4,Dropped 2 Stage-1 fact(s) citing unknown references
+PUB-03#run1,single,True,True,True,True,1306.5,2,4,
+PUB-03#run1,staged,True,True,True,True,2640.4,6,4,Dropped 1 Stage-1 fact(s) citing unknown references
+PUB-04#run1,single,True,True,True,True,1437.0,4,4,
+PUB-04#run1,staged,True,True,True,True,2680.3,6,4,Dropped 4 Stage-1 fact(s) citing unknown references
+PUB-05#run1,single,True,True,True,True,1537.3,3,4,Model judged the business justification inadequate (quote verified); clarification requested | Rejected model rationale (ungrounded dollar figure: $60000); deterministic rationale used
+PUB-05#run1,staged,True,True,True,True,3111.0,6,4,Dropped 2 Stage-1 fact(s) citing unknown references | Model judged the business justification inadequate (quote verified); clarification requested | Rejected model rationale (ungrounded dollar figure:
+PUB-06#run1,single,True,True,True,True,1659.9,5,5,
+PUB-06#run1,staged,True,True,True,True,2958.5,7,5,Dropped 4 Stage-1 fact(s) citing unknown references
+PUB-01#run2,single,True,True,True,True,1628.4,4,4,
+PUB-01#run2,staged,True,True,True,True,2670.0,7,4,Dropped 1 Stage-1 fact(s) citing unknown references
+PUB-02#run2,single,True,True,True,True,1622.4,5,4,
+PUB-02#run2,staged,True,True,True,True,2854.2,7,4,Dropped 2 Stage-1 fact(s) citing unknown references
+PUB-03#run2,single,True,True,True,True,1620.2,5,4,
+PUB-03#run2,staged,True,True,True,True,2802.7,7,4,Dropped 1 Stage-1 fact(s) citing unknown references
+PUB-04#run2,single,True,True,True,True,1370.5,4,4,
+PUB-04#run2,staged,True,True,True,True,2770.6,7,4,Dropped 4 Stage-1 fact(s) citing unknown references
+PUB-05#run2,single,True,True,True,True,1549.5,4,4,Model judged the business justification inadequate (quote verified); clarification requested | Rejected model rationale (ungrounded dollar figure: $60000); deterministic rationale used
+PUB-05#run2,staged,True,True,True,True,3104.6,8,4,Dropped 2 Stage-1 fact(s) citing unknown references | Model judged the business justification inadequate (quote verified); clarification requested | Rejected model rationale (ungrounded dollar figure:
+PUB-06#run2,single,True,True,True,True,1589.7,4,5,
+PUB-06#run2,staged,True,True,True,True,2863.1,6,5,Dropped 4 Stage-1 fact(s) citing unknown references

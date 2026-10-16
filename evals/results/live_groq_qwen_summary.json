@@ -1,0 +1,92 @@
+{
+  "meta": {
+    "provider_mode": "live-groq",
+    "model": "qwen/qwen3.8-27b",
+    "sets": [
+      "public"
+    ],
+    "cases": 6,
+    "runs": 2,
+    "generated": "2026-10-14 09:08:52 +0530"
+  },
+  "summary": {
+    "single": {
+      "runs": 12,
+      "cases": 6,
+      "automated_pass": 12,
+      "pass_recommendation": 12,
+      "pass_next_step": 12,
+      "pass_evidence_expected": 12,
+      "pass_evidence_grounded": 12,
+      "pass_approvals": 12,
+      "pass_risk_flags": 12,
+      "pass_missing_information": 12,
+      "pass_human_escalation": 12,
+      "mean_latency_ms": 21137.38,
+      "mean_latency_net_of_waits_ms": 1512.38,
+      "median_latency_net_ms": 1543.4,
+      "p95_latency_net_ms": 1659.9,
+      "mean_llm_calls": 3.92,
+      "mean_llm_calls_succeeded": 2.0,
+      "mean_tool_calls": 4.17,
+      "mean_prompt_tokens": 2341.83,
+      "mean_completion_tokens": 387.08,
+      "failed_llm_calls": 23,
+      "failed_tool_calls": 4,
+      "guardrail_backfills": 0,
+      "ungrounded_claims": 2,
+      "llm_status": {
+        "live": 12
+      },
+      "telemetry_consistent": 12,
+      "unstable_cases": [],
+      "failed_runs": [],
+      "category_pass": {
+        "approval_threshold": "2/2",
+        "existing_tool": "4/4",
+        "incomplete_or_ambiguous": "2/2",
+        "security_sensitive": "2/2",
+        "tool_unavailable": "2/2"
+      }
+    },
+    "staged": {
+      "runs": 12,
+      "cases": 6,
+      "automated_pass": 12,
+      "pass_recommendation": 12,
+      "pass_next_step": 12,
+      "pass_evidence_expected": 12,
+      "pass_evidence_grounded": 12,
+      "pass_approvals": 12,
+      "pass_risk_flags": 12,
+      "pass_missing_information": 12,
+      "pass_human_escalation": 12,
+      "mean_latency_ms": 48748.8,
+      "mean_latency_net_of_waits_ms": 2790.47,
+      "median_latency_net_ms": 2786.6,
+      "p95_latency_net_ms": 3111.0,
+      "mean_llm_calls": 6.25,
+      "mean_llm_calls_succeeded": 3.0,
+      "mean_tool_calls": 4.17,
+      "mean_prompt_tokens": 3757.17,
+      "mean_completion_tokens": 875.5,
+      "failed_llm_calls": 39,
+      "failed_tool_calls": 4,
+      "guardrail_backfills": 0,
+      "ungrounded_claims": 30,
+      "llm_status": {
+        "live": 12
+      },
+      "telemetry_consistent": 12,
+      "unstable_cases": [],
+      "failed_runs": [],
+      "category_pass": {
+        "approval_threshold": "2/2",
+        "existing_tool": "4/4",
+        "incomplete_or_ambiguous": "2/2",
+        "security_sensitive": "2/2",
+        "tool_unavailable": "2/2"
+      }
+    }
+  }
+}

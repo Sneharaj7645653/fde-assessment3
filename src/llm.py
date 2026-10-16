@@ -23,14 +23,14 @@ import httpx
 
 from src.instrumentation import RunRecorder
 
-DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
+DEFAULT_GROQ_MODEL = "qwen/qwen3.8-27b"
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 MAX_RATE_LIMIT_WAIT_S = 65.0
-MAX_RATE_LIMIT_RETRIES = 2
+MAX_RATE_LIMIT_RETRIES = 4
 
 
 class LLMError(Exception):
-    """kind: missing_credentials | auth | rate_limited | timeout | network | server | bad_request | malformed_output | schema_validation"""
+    """kind: missing_credentials | auth | rate_limited | timeout | network | server | model_error | bad_request | malformed_output | schema_validation"""
 
     def __init__(self, kind: str, message: str, retry_after: float | None = None):
         super().__init__(f"{kind}: {message}")
@@ -136,6 +136,8 @@ class GroqProvider(LLMProvider):
         if self.model.startswith("openai/gpt-oss"):
             body["reasoning_effort"] = "low"
             body["include_reasoning"] = False
+        elif self.model.startswith("qwen/"):
+            body["reasoning_effort"] = "none"  # qwen "thinking" tokens otherwise exhaust the output-tokens-per-minute limit
         return body
 
     def chat(self, messages, *, recorder, agent, tools=None, json_mode=False, max_tokens=900, is_retry=False) -> ChatResult:
@@ -166,7 +168,7 @@ class GroqProvider(LLMProvider):
                     self._sleep(wait)
                     recorder.add_wait(wait * 1000)
                     continue
-                if exc.kind in {"timeout", "network", "server"} and transient_retries < 1:
+                if exc.kind in {"timeout", "network", "server", "model_error"} and transient_retries < 1:
                     transient_retries += 1
                     self._sleep(0.5)
                     continue
@@ -194,14 +196,16 @@ class GroqProvider(LLMProvider):
         if status in (401, 403):
             raise LLMError("auth", f"provider rejected the credential (HTTP {status})")
         if status == 429:
-            raise LLMError("rate_limited", "provider rate limit (HTTP 429)", retry_after=_retry_after(response))
+            raise LLMError("rate_limited", f"provider rate limit (HTTP 429): {_error_text(response)}", retry_after=_retry_after(response))
         if status >= 500:
             raise LLMError("server", f"provider error (HTTP {status})")
         if status >= 400:
-            try:
-                detail = response.json().get("error", {}).get("message", "")[:300]
-            except ValueError:
-                detail = ""
+            detail = _error_text(response)
+            # Groq returns 400 when the *model* emits an unparseable/forbidden tool call or invalid JSON. That is a
+            # generation failure (nondeterministic), not a malformed request from us, so it is retried once.
+            if any(marker in detail.lower() for marker in ("failed to parse tool call", "tool call validation failed", "failed to generate json",
+                                                         "tool choice is none", "parsing failed")):
+                raise LLMError("model_error", f"HTTP {status}: {detail}")
             raise LLMError("bad_request", f"HTTP {status}: {detail}")
         try:
             data = response.json()
@@ -215,6 +219,15 @@ class GroqProvider(LLMProvider):
         if message.get("tool_calls"):
             raw["tool_calls"] = message["tool_calls"]
         return ChatResult(message.get("content"), calls, raw, data.get("model", self.model), finish), data.get("usage") or {}, response.headers
+
+
+def _error_text(response: httpx.Response) -> str:
+    try:
+        body = response.json()
+        message = body.get("error", {}).get("message", "") if isinstance(body, dict) else ""
+    except ValueError:
+        message = ""
+    return " ".join(str(message).split())[:300]
 
 
 def _retry_after(response: httpx.Response) -> float | None:

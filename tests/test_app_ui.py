@@ -42,6 +42,13 @@ class ProcurementUiTests(unittest.TestCase):
         self.assertTrue(any("Human review is required" in w.value for w in app.warning))
         self.assertEqual(len(app.error), 0)
 
+    def test_dollar_amounts_are_escaped_so_streamlit_does_not_render_latex(self):
+        app = self._open()
+        app.button[0].click().run()
+        values = [str(m.value) for m in app.markdown]
+        self.assertTrue(any("has \\$29,000 available budget (\\$90,000 annual budget minus \\$61,000 committed)" in v for v in values), values)
+        self.assertFalse(any("$" in v.replace("\\$", "") for v in values if "$" in v and "badge" not in v))
+
     def test_vendor_api_503_renders_unavailable_evidence_and_manual_review(self):
         app = self._open()
         app.selectbox[0].select("REQ-1009").run()

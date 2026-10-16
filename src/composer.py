@@ -22,6 +22,11 @@ NUMBER_WORDS = {w: str(i) for i, w in enumerate(
     ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"])}
 
 
+def sentence(value: Any) -> str:
+    """Free text without its trailing period, so we can append our own punctuation."""
+    return text(value).rstrip(". ")
+
+
 def numeric_rendering(value: str) -> str:
     """Append-only normalisation of number words so '3' and 'three' both match in evidence."""
     return re.sub(r"\b(" + "|".join(NUMBER_WORDS) + r")\b", lambda m: NUMBER_WORDS[m.group(0).casefold()], value, flags=re.IGNORECASE)
@@ -103,13 +108,13 @@ def build_evidence(g: Gathered, result: PolicyResult, extra_flags: set[str] | No
                 source="data/software_catalog.csv", reference=f"data/software_catalog.csv#{row.get('software_id')}", tool="search_existing_software",
                 finding=(f"The catalog contains {row.get('product_name')} in {row.get('category')} from {row.get('vendor_name')} "
                          f"with {row.get('licensed_seats')} seats, {row.get('scope')} scope, status {row.get('status')}, "
-                         f"and notes: {row.get('notes') or ''}. Match basis: {', '.join(row.get('match_basis', []))}. "
+                         f"and notes: {sentence(row.get('notes') or '')}. Match basis: {', '.join(row.get('match_basis', []))}. "
                          "This shows an existing product, not proof of unused capacity or functional equivalence."),
                 evidence_status="verified"))
         for row in g.purchase_matches:
             items.append(EvidenceItem(
                 source="data/purchase_history.csv", reference=f"data/purchase_history.csv#{row.get('purchase_id')}", tool="search_existing_software",
-                finding=f"Approved purchase {row.get('purchase_id')} for {row.get('vendor_name')} {row.get('product_name')} with status {row.get('status')} and note '{row.get('notes') or ''}'.",
+                finding=f"Approved purchase {row.get('purchase_id')} for {row.get('vendor_name') if policy.lower(row.get('vendor_name')) == policy.lower(row.get('product_name')) else str(row.get('vendor_name')) + ' ' + str(row.get('product_name'))} with status {row.get('status')} and note '{sentence(row.get('notes') or '')}'.",
                 evidence_status="verified"))
 
     if g.registry:
@@ -117,7 +122,7 @@ def build_evidence(g: Gathered, result: PolicyResult, extra_flags: set[str] | No
         items.append(EvidenceItem(
             source="data/vendors.csv", reference=f"data/vendors.csv#{reg.get('vendor_id')}", tool="get_vendor_status",
             finding=(f"{text(request.get('vendor_name'))}: procurement_status: {reg.get('procurement_status')}; security_status: {reg.get('security_status')}; "
-                     f"security_review_date: {reg.get('security_review_date') or 'null'}; legal_terms_status: {reg.get('legal_terms_status')}; notes: {reg.get('notes') or ''}."),
+                     f"security_review_date: {reg.get('security_review_date') or 'null'}; legal_terms_status: {reg.get('legal_terms_status')}; notes: {sentence(reg.get('notes') or '')}."),
             evidence_status="verified"))
     elif g.registry_checked:
         items.append(EvidenceItem(
@@ -130,12 +135,12 @@ def build_evidence(g: Gathered, result: PolicyResult, extra_flags: set[str] | No
         if g.vendor_fetch_status == "unavailable":
             items.append(EvidenceItem(
                 source="mock_api", reference=ref, tool="get_vendor_status", evidence_status="unavailable",
-                finding=(f"The vendor-risk service failed: {g.vendor_error}. The provider is temporarily unavailable; the vendor's assessment "
+                finding=(f"The vendor-risk service failed: {sentence(g.vendor_error)}. The provider is temporarily unavailable; the vendor's assessment "
                          "could not be verified and is not treated as favourable, expired, or unsafe.")))
         elif g.vendor_fetch_status == "not_found":
             items.append(EvidenceItem(
                 source="mock_api", reference=ref, tool="get_vendor_status", evidence_status="missing",
-                finding=f"The vendor-risk service has no record for {vendor} ({g.vendor_error}); no security assessment is on file."))
+                finding=f"The vendor-risk service has no record for {vendor} ({sentence(g.vendor_error)}); no security assessment is on file."))
         else:
             risk = g.vendor_risk or {}
             state = result.vendor_state
@@ -147,7 +152,7 @@ def build_evidence(g: Gathered, result: PolicyResult, extra_flags: set[str] | No
             finding = (f"The vendor-risk record reports risk_level: {text(risk.get('risk_level'))}, security_review_status: {text(risk.get('security_review_status'))}, "
                        f"last_review_date: {risk.get('last_review_date') if risk.get('last_review_date') is not None else 'null'}, "
                        f"processes_personal_data: {str(risk.get('processes_personal_data')).lower()}, "
-                       f"stores_data_outside_region: {str(risk.get('stores_data_outside_region')).lower()}, notes: {text(risk.get('notes') or '')}.")
+                       f"stores_data_outside_region: {str(risk.get('stores_data_outside_region')).lower()}, notes: {sentence(risk.get('notes') or '')}.")
             if state == "expired":
                 age = policy.review_age_days(risk.get("last_review_date"))
                 if age is not None:
@@ -236,9 +241,10 @@ def deterministic_rationale(g: Gathered, result: PolicyResult) -> str:
         parts.append(f"Annual cost {money(result.cost)} falls in the '{result.spend_tier}' tier.")
     if result.shortfall is not None:
         parts.append(f"The request exceeds available department budget by {money(result.shortfall)}.")
-    for t in result.triggers:
-        if t["rule"] in {"security", "privacy", "legal"}:
-            parts.append(f"{t['rule'].title()} review: {t['reason']}.")
+    for rule in ("security", "privacy", "legal"):
+        reasons = list(dict.fromkeys(t["reason"] for t in result.triggers if t["rule"] == rule))
+        if reasons:
+            parts.append(f"{rule.title()} review required: " + "; ".join(reasons) + ".")
     if "prompt_injection_detected" in result.risk_flags:
         parts.append("Instruction-like text in business data was ignored.")
     parts.append("This is a recommendation only; the listed humans decide.")

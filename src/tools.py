@@ -34,19 +34,19 @@ vendor_fetcher: VendorFetcher = fetch_vendor_risk
 TOOL_SCHEMAS: list[dict[str, Any]] = [
     {"type": "function", "function": {
         "name": "lookup_requester_budget",
-        "description": "Look up the requester (employees.csv) and their department's software budget (department_budgets.csv). Deterministic.",
+        "description": "Requester and department software budget lookup.",
         "parameters": {"type": "object", "properties": {"request_id": {"type": "string"}}, "required": ["request_id"], "additionalProperties": False}}},
     {"type": "function", "function": {
         "name": "search_existing_software",
-        "description": "Search the approved software catalog and purchase history for the same vendor, product or category as the request. Deterministic.",
+        "description": "Search approved catalog and purchase history for the same vendor, product or category.",
         "parameters": {"type": "object", "properties": {"request_id": {"type": "string"}}, "required": ["request_id"], "additionalProperties": False}}},
     {"type": "function", "function": {
         "name": "get_vendor_status",
-        "description": "Fetch the vendor registry row and call the vendor-risk API for the requested vendor. Reports outages as unavailable, never as safe.",
+        "description": "Vendor registry row plus vendor-risk API result; outages are reported as unavailable, never as safe.",
         "parameters": {"type": "object", "properties": {"request_id": {"type": "string"}}, "required": ["request_id"], "additionalProperties": False}}},
     {"type": "function", "function": {
         "name": "check_policy",
-        "description": "Run the deterministic procurement policy engine (spend tier, budget, security/privacy/legal triggers, approvals). Authoritative; cannot be overridden.",
+        "description": "Deterministic policy engine: spend tier, budget, security/privacy/legal triggers, approvals. Authoritative.",
         "parameters": {"type": "object", "properties": {"request_id": {"type": "string"}}, "required": ["request_id"], "additionalProperties": False}}},
 ]
 
@@ -207,7 +207,15 @@ def policy_summary(result: policy.PolicyResult) -> dict[str, Any]:
     }
 
 
+def _strip_nulls(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {k: _strip_nulls(v) for k, v in value.items() if v is not None and not (isinstance(v, float) and math.isnan(v))}
+    if isinstance(value, list):
+        return [_strip_nulls(v) for v in value]
+    return value
+
+
 def tool_output_for_model(result: dict[str, Any], limit: int = 2500) -> str:
     """Compact JSON for the model (long free-text is truncated; it is data, not instructions)."""
-    text = json.dumps(result, default=_jsonable, separators=(",", ":"))
+    text = json.dumps(_strip_nulls(result), default=_jsonable, separators=(",", ":"))
     return text if len(text) <= limit else text[:limit] + '..."[truncated]"'

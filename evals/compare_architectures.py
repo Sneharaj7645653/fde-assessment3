@@ -49,6 +49,7 @@ from src.solution import evaluate_request  # noqa: E402
 from src.tools import records  # noqa: E402
 
 RESULTS_DIR = ROOT / "evals" / "results"
+http_get = requests.get  # indirection so tests can serve the audit's direct API call in-process
 DIMENSIONS = ["recommendation", "next_step", "evidence_expected", "evidence_grounded", "approvals", "risk_flags", "missing_information", "human_escalation"]
 FAILURE_DIMENSION = [
     ("recommendation expected", "recommendation"), ("required next-step phrase", "next_step"),
@@ -161,7 +162,7 @@ def _audit_vendor_risk(vendor: str, item, override: dict[str, dict] | None) -> b
         record = override[vendor]
         return record["security_review_status"] in item.finding and str(record.get("notes", ""))[:20] in item.finding
     try:
-        response = requests.get(f"{vendor_client.os.getenv('VENDOR_RISK_BASE_URL', 'http://127.0.0.1:8001').rstrip('/')}/vendor-risk/{requests.utils.quote(vendor, safe='')}", timeout=3)
+        response = http_get(f"{vendor_client.os.getenv('VENDOR_RISK_BASE_URL', 'http://127.0.0.1:8001').rstrip('/')}/vendor-risk/{requests.utils.quote(vendor, safe='')}", timeout=3)
     except requests.RequestException:
         return item.evidence_status == "unavailable"
     if response.status_code == 404:
@@ -200,14 +201,16 @@ def run_one(case: dict[str, Any], architecture: str, provider: LLMProvider, run_
         dims["evidence_grounded"] = not audit
         dims["human_escalation"] = dims["human_escalation"] and bool(decision.human_handoff and decision.human_handoff.required)
         t, m = decision.telemetry, decision.metadata
-        consistent_model = (counters.model_posts == t.llm_calls) if m.llm_status == "live" else counters.model_posts == 0
+        # Every provider attempt must correspond to one real HTTP post (also for fallback runs, where failed attempts are counted).
+        # Scripted mock providers make no HTTP calls, so the check does not apply to them.
+        consistent_model = True if provider.mode == "mock" else counters.model_posts == t.llm_calls
         consistent_vendor = counters.vendor_attempts == t.tool_call_counts.get("get_vendor_status", 0)
         row.update({
             "automated_pass": not failures and not audit, "failures": " | ".join(failures + [f"AUDIT {a}" for a in audit]),
             **{f"ok_{d}": dims[d] for d in DIMENSIONS},
             "llm_status": m.llm_status, "fallback_reason": m.fallback_reason or "", "latency_ms": round(latency_ms, 1),
             "latency_net_of_waits_ms": round(latency_ms - t.rate_limit_wait_ms, 1), "rate_limit_wait_ms": t.rate_limit_wait_ms,
-            "llm_calls": t.llm_calls, "tool_calls": t.tool_calls, "llm_retries": t.llm_retries, "tool_retries": t.tool_retries,
+            "llm_calls": t.llm_calls, "llm_calls_succeeded": t.llm_calls - t.failed_llm_calls, "tool_calls": t.tool_calls, "llm_retries": t.llm_retries, "tool_retries": t.tool_retries,
             "failed_llm_calls": t.failed_llm_calls, "failed_tool_calls": t.failed_tool_calls, "guardrail_backfills": t.guardrail_tool_backfills,
             "prompt_tokens": t.prompt_tokens, "completion_tokens": t.completion_tokens, "ungrounded_claims": m.ungrounded_claims,
             "independent_model_posts": counters.model_posts, "independent_vendor_attempts": counters.vendor_attempts,
@@ -238,7 +241,7 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
             **{f"pass_{d}": sum(bool(r.get(f"ok_{d}")) for r in mine) for d in DIMENSIONS},
             "mean_latency_ms": mean("latency_ms"), "mean_latency_net_of_waits_ms": mean("latency_net_of_waits_ms"),
             "median_latency_net_ms": round(statistics.median(lat), 1) if lat else None, "p95_latency_net_ms": round(lat[min(len(lat) - 1, int(0.95 * len(lat)))], 1) if lat else None,
-            "mean_llm_calls": mean("llm_calls"), "mean_tool_calls": mean("tool_calls"),
+            "mean_llm_calls": mean("llm_calls"), "mean_llm_calls_succeeded": mean("llm_calls_succeeded"), "mean_tool_calls": mean("tool_calls"),
             "mean_prompt_tokens": mean("prompt_tokens"), "mean_completion_tokens": mean("completion_tokens"),
             "failed_llm_calls": sum(r.get("failed_llm_calls", 0) for r in mine), "failed_tool_calls": sum(r.get("failed_tool_calls", 0) for r in mine),
             "guardrail_backfills": sum(r.get("guardrail_backfills", 0) for r in mine), "ungrounded_claims": sum(r.get("ungrounded_claims", 0) for r in mine),
@@ -259,11 +262,23 @@ def write_outputs(label: str, rows: list[dict[str, Any]], summary: dict[str, Any
         writer = csv.DictWriter(fh, fieldnames=fields)
         writer.writeheader()
         writer.writerows(rows)
+    # Same columns as templates/evaluation_results_template.csv (one row per case x architecture x run).
+    template = RESULTS_DIR / f"{label}_template.csv"
+    with template.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(["case_id", "architecture", "correct_next_action", "grounded_evidence", "policy_followed", "human_escalation_correct",
+                         "latency_ms", "llm_calls", "tool_calls", "notes"])
+        for r in rows:
+            writer.writerow([r["case_id"] + (f"#run{r['run']}" if meta["runs"] > 1 else ""), r["architecture"],
+                             bool(r.get("ok_recommendation") and r.get("ok_next_step")), bool(r.get("ok_evidence_expected") and r.get("ok_evidence_grounded")),
+                             bool(r.get("ok_approvals") and r.get("ok_risk_flags") and r.get("ok_missing_information")), bool(r.get("ok_human_escalation")),
+                             r.get("latency_net_of_waits_ms", r.get("latency_ms")), r.get("llm_calls", ""), r.get("tool_calls", ""),
+                             (r.get("failures") or r.get("guardrail_notes") or "")[:200]])
     summary_path = RESULTS_DIR / f"{label}_summary.json"
     summary_path.write_text(json.dumps({"meta": meta, "summary": summary}, indent=2) + "\n")
     md = RESULTS_DIR / f"{label}_comparison.md"
     md.write_text(render_markdown(label, summary, meta))
-    return [raw, summary_path, md]
+    return [raw, summary_path, md, template]
 
 
 def render_markdown(label: str, summary: dict[str, Any], meta: dict[str, Any]) -> str:
@@ -272,7 +287,13 @@ def render_markdown(label: str, summary: dict[str, Any], meta: dict[str, Any]) -
     def line(title, key, fmt=lambda v: v):
         return f"| {title} | " + " | ".join(str(fmt(summary[a][key])) for a in archs) + " |"
     n = {a: summary[a]["runs"] for a in archs}
-    lines = [f"# Comparison: {label}", "", f"- Provider mode: **{meta['provider_mode']}** (model: `{meta['model']}`)", f"- Case sets: {', '.join(meta['sets'])}; cases: {meta['cases']}; runs per case: {meta['runs']}",
+    fell_back = sum(v for a in archs for k, v in summary[a]["llm_status"].items() if k in {"fallback", "disabled", "crash"})
+    warning = []
+    if meta["provider_mode"].startswith("live") and fell_back:
+        warning = [f"> **WARNING - not a valid live comparison:** {fell_back} of {sum(summary[a]['runs'] for a in archs)} runs did not get a live model answer "
+                   "(provider error / rate limit / quota) and fell back to deterministic output. Their pass/fail numbers describe the deterministic floor, not the model. "
+                   "See `Model status per run`.", ""]
+    lines = [f"# Comparison: {label}", ""] + warning + [ f"- Provider mode: **{meta['provider_mode']}** (model: `{meta['model']}`)", f"- Case sets: {', '.join(meta['sets'])}; cases: {meta['cases']}; runs per case: {meta['runs']}",
              f"- Generated: {meta['generated']}", "- Automated assertions use the instructor's `evaluate()`; manual grounding review is reported separately and is **not** included in these numbers.", "",
              "| Metric | " + " | ".join(names.get(a, a) for a in archs) + " |", "|---|" + "---:|" * len(archs),
              line("Runs", "runs"), line("Automated pass (runs)", "automated_pass", lambda v: v)]
@@ -281,7 +302,7 @@ def render_markdown(label: str, summary: dict[str, Any], meta: dict[str, Any]) -
     lines += [line("Mean latency, end-to-end (ms)", "mean_latency_ms"), line("Mean latency, net of rate-limit waits (ms)", "mean_latency_net_of_waits_ms"),
               "| Median net latency (ms) | " + " | ".join(str(summary[a]["median_latency_net_ms"]) for a in archs) + " |",
               "| p95 net latency (ms) | " + " | ".join(str(summary[a]["p95_latency_net_ms"]) for a in archs) + " |",
-              line("Mean model calls", "mean_llm_calls"), line("Mean tool calls", "mean_tool_calls"),
+              line("Mean model calls (all attempts, incl. retries)", "mean_llm_calls"), line("Mean model calls that succeeded", "mean_llm_calls_succeeded"), line("Mean tool calls", "mean_tool_calls"),
               line("Mean prompt tokens", "mean_prompt_tokens"), line("Mean completion tokens", "mean_completion_tokens"),
               line("Failed model calls (total)", "failed_llm_calls"), line("Failed tool calls (total)", "failed_tool_calls"),
               line("Guardrail tool back-fills (total)", "guardrail_backfills"), line("Ungrounded model claims dropped (total)", "ungrounded_claims"),
@@ -304,9 +325,13 @@ def main() -> int:
     parser.add_argument("--sets", nargs="+", choices=["public", "extended"], default=["public", "extended"])
     parser.add_argument("--runs", type=int, default=1, help="repeat every case N times to expose model nondeterminism")
     parser.add_argument("--label", default=None)
+    parser.add_argument("--model", default=None, help="override GROQ_MODEL for this run")
     parser.add_argument("--cases", nargs="*", help="restrict to these case IDs")
     args = parser.parse_args()
 
+    if args.model:
+        import os
+        os.environ["GROQ_MODEL"] = args.model
     cases = [c for c in load_cases(args.sets) if not args.cases or c["case_id"] in args.cases]
     provider: LLMProvider = get_provider() if args.provider == "groq" else NullProvider("--provider none")
     if args.provider == "groq" and isinstance(provider, NullProvider):

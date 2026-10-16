@@ -1,0 +1,31 @@
+case_id,architecture,correct_next_action,grounded_evidence,policy_followed,human_escalation_correct,latency_ms,llm_calls,tool_calls,notes
+EXT-01,single,True,True,True,True,8.1,0,3,Model unavailable; decision uses deterministic tools and policy only
+EXT-01,staged,True,True,True,True,9.9,0,3,Model unavailable; decision uses deterministic tools and policy only
+EXT-02,single,True,True,True,True,6.2,0,3,Model unavailable; decision uses deterministic tools and policy only
+EXT-02,staged,True,True,True,True,6.2,0,3,Model unavailable; decision uses deterministic tools and policy only
+EXT-03,single,True,True,True,True,5.5,0,3,Model unavailable; decision uses deterministic tools and policy only
+EXT-03,staged,True,True,True,True,5.8,0,3,Model unavailable; decision uses deterministic tools and policy only
+EXT-04,single,True,True,True,True,5.5,0,3,Model unavailable; decision uses deterministic tools and policy only
+EXT-04,staged,True,True,True,True,5.4,0,3,Model unavailable; decision uses deterministic tools and policy only
+PUB-01,single,True,True,True,True,5.1,0,3,Model unavailable; decision uses deterministic tools and policy only
+PUB-01,staged,True,True,True,True,8.5,0,3,Model unavailable; decision uses deterministic tools and policy only
+PUB-02,single,True,True,True,True,5.5,0,3,Model unavailable; decision uses deterministic tools and policy only
+PUB-02,staged,True,True,True,True,4.8,0,3,Model unavailable; decision uses deterministic tools and policy only
+PUB-03,single,True,True,True,True,4.6,0,3,Model unavailable; decision uses deterministic tools and policy only
+PUB-03,staged,True,True,True,True,5.1,0,3,Model unavailable; decision uses deterministic tools and policy only
+PUB-04,single,True,True,True,True,4.9,0,3,Model unavailable; decision uses deterministic tools and policy only
+PUB-04,staged,True,True,True,True,5.3,0,3,Model unavailable; decision uses deterministic tools and policy only
+PUB-05,single,True,True,True,True,4.8,0,3,Model unavailable; decision uses deterministic tools and policy only
+PUB-05,staged,True,True,True,True,4.8,0,3,Model unavailable; decision uses deterministic tools and policy only
+PUB-06,single,True,True,True,True,214.3,0,4,Model unavailable; decision uses deterministic tools and policy only
+PUB-06,staged,True,True,True,True,219.0,0,4,Model unavailable; decision uses deterministic tools and policy only
+SYN-01,single,True,True,True,True,5.4,0,3,Model unavailable; decision uses deterministic tools and policy only
+SYN-01,staged,True,True,True,True,5.2,0,3,Model unavailable; decision uses deterministic tools and policy only
+SYN-02,single,True,True,True,True,4.8,0,3,Model unavailable; decision uses deterministic tools and policy only
+SYN-02,staged,True,True,True,True,5.1,0,3,Model unavailable; decision uses deterministic tools and policy only
+SYN-03,single,False,True,False,True,4.8,0,3,required risk flag missing: missing_information | required missing-information item absent: business_justification | recommendation expected request_clarification | required next-step phrase absent: c
+SYN-03,staged,False,True,False,True,5.4,0,3,required risk flag missing: missing_information | required missing-information item absent: business_justification | recommendation expected request_clarification | required next-step phrase absent: c
+SYN-04,single,True,True,True,True,3.3,0,3,Model unavailable; decision uses deterministic tools and policy only
+SYN-04,staged,True,True,True,True,2.8,0,3,Model unavailable; decision uses deterministic tools and policy only
+SYN-05,single,True,True,True,True,4.7,0,3,Model unavailable; decision uses deterministic tools and policy only
+SYN-05,staged,True,True,True,True,4.9,0,3,Model unavailable; decision uses deterministic tools and policy only

@@ -1,3 +1,5 @@
+> **Status: superseded in part by `specs/05-final-implementation-and-traceability.md`.** Where this document and spec 05 differ (tool count: 4 built vs 5 planned; model/provider design; evaluation harness; policy interpretations), spec 05 and the code are authoritative. This file is kept as the planning record.
+
 # Implementation Specification
 
 ## Section 1: Scope and acceptance criteria

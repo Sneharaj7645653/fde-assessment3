@@ -2,7 +2,7 @@
 
 - Provider mode: **no-llm (deterministic fallback)** (model: `-`)
 - Case sets: public, extended; cases: 15; runs per case: 1
-- Generated: 2026-10-13 23:24:09 +0530
+- Generated: 2026-10-14 08:55:29 +0530
 - Automated assertions use the instructor's `evaluate()`; manual grounding review is reported separately and is **not** included in these numbers.
 
 | Metric | A - single agent | B - staged (2 agents) |
@@ -17,11 +17,12 @@
 | Risk flags | 14/15 | 14/15 |
 | Missing information | 14/15 | 14/15 |
 | Human escalation | 15/15 | 15/15 |
-| Mean latency, end-to-end (ms) | 18.37 | 19.15 |
-| Mean latency, net of rate-limit waits (ms) | 18.37 | 19.15 |
-| Median net latency (ms) | 3.8 | 3.7 |
-| p95 net latency (ms) | 219.6 | 223.8 |
-| Mean model calls | 0.0 | 0.0 |
+| Mean latency, end-to-end (ms) | 19.17 | 19.88 |
+| Mean latency, net of rate-limit waits (ms) | 19.17 | 19.88 |
+| Median net latency (ms) | 5.1 | 5.3 |
+| p95 net latency (ms) | 214.3 | 219.0 |
+| Mean model calls (all attempts, incl. retries) | 0.0 | 0.0 |
+| Mean model calls that succeeded | 0.0 | 0.0 |
 | Mean tool calls | 3.07 | 3.07 |
 | Mean prompt tokens | 0.0 | 0.0 |
 | Mean completion tokens | 0.0 | 0.0 |

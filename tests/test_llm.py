@@ -49,6 +49,15 @@ class GroqProviderTests(unittest.TestCase):
         self.assertEqual(bodies[0]["response_format"], {"type": "json_object"}); self.assertNotIn("tools", bodies[0])
         self.assertEqual(bodies[1]["tool_choice"], "auto")
 
+    def test_model_specific_reasoning_settings(self):
+        bodies = []
+        def handler(request):
+            bodies.append(json.loads(request.content)); return httpx.Response(200, json=ok_body())
+        for model in ("qwen/qwen3.8-27b", "openai/gpt-oss-120b"):
+            p = llm.GroqProvider(["k"], model=model, client=httpx.Client(transport=httpx.MockTransport(handler)), sleep=lambda s: None)
+            p.chat(MSG, recorder=RunRecorder(), agent="a")
+        self.assertEqual((bodies[0]["reasoning_effort"], bodies[1]["reasoning_effort"]), ("none", "low"))
+
     def test_tool_calls_are_parsed(self):
         calls = [{"id": "c1", "type": "function", "function": {"name": "check_policy", "arguments": "{\"request_id\":\"R\"}"}}]
         p, _ = provider(lambda r: httpx.Response(200, json=ok_body("", calls)))
@@ -107,6 +116,20 @@ class GroqProviderTests(unittest.TestCase):
         with self.assertRaises(llm.LLMError) as ctx:
             p.chat(MSG, recorder=RunRecorder(), agent="a")
         self.assertEqual(ctx.exception.kind, "server")
+
+    def test_generation_failures_are_model_errors_retried_once(self):
+        responses = iter([httpx.Response(400, json={"error": {"message": "Failed to parse tool call arguments as JSON"}}), httpx.Response(200, json=ok_body("fine"))])
+        p, sleeps = provider(lambda r: next(responses)); rec = RunRecorder()
+        self.assertEqual(p.chat(MSG, recorder=rec, agent="a").content, "fine")
+        t = rec.to_telemetry(); self.assertEqual((t.llm_calls, t.failed_llm_calls, t.llm_retries), (2, 1, 1))
+        p, _ = provider(lambda r: httpx.Response(400, json={"error": {"message": "Tool call validation failed: attempted to call tool 'json'"}}))
+        with self.assertRaises(llm.LLMError) as ctx: p.chat(MSG, recorder=RunRecorder(), agent="a")
+        self.assertEqual(ctx.exception.kind, "model_error")
+
+    def test_rate_limit_error_carries_provider_message(self):
+        p, _ = provider(lambda r: httpx.Response(429, headers={"retry-after": "9999"}, json={"error": {"message": "tokens per day (TPD): Limit 200000"}}))
+        with self.assertRaises(llm.LLMError) as ctx: p.chat(MSG, recorder=RunRecorder(), agent="a")
+        self.assertIn("tokens per day", ctx.exception.message)
 
     def test_bad_request_and_malformed_body(self):
         p, _ = provider(lambda r: httpx.Response(400, json={"error": {"message": "nope"}}))

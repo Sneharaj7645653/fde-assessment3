@@ -161,6 +161,7 @@ class Gathered:
     vendor_fetch_status: str | None = None
     vendor_error: str | None = None
     tools_done: set[str] = field(default_factory=set)
+    notes_hint: str | None = None  # operational note from the agent loop (not policy data)
 
     def untrusted_texts(self) -> dict[str, str]:
         """Every free-text field from business data (never treated as instructions)."""

@@ -118,6 +118,17 @@ class ArchitectureATests(unittest.TestCase):
         self.assertEqual(d.metadata.llm_status, "disabled"); self.assertEqual(d.telemetry.llm_calls, 0)
         self.assertIn("template", d.rationale)
 
+    def test_persistent_model_error_in_tool_loop_still_yields_a_live_answer(self):
+        def script(messages, tools, json_mode):
+            if json_mode:
+                return {"content": json.dumps(BENIGN_ANALYSIS)}
+            raise LLMError("model_error", "HTTP 400: attempted to call tool 'json'")
+        d = run("REQ-1001", provider=ScriptedProvider(script=script))
+        self.assertEqual(d.metadata.llm_status, "mock")
+        self.assertEqual(d.telemetry.guardrail_tool_backfills, 3)
+        self.assertTrue(any("tool loop ended early" in n for n in d.metadata.guardrail_notes))
+        self.assertEqual(d.required_approvals, ["Manager"])
+
     def test_unexpected_internal_error_is_contained(self):
         def boom(messages, tools, json_mode): raise RuntimeError("kaboom")
         d = run("REQ-1001", provider=ScriptedProvider(script=boom))
